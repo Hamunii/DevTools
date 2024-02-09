@@ -1,39 +1,59 @@
-﻿namespace DevTools {
+﻿using System.Reflection;
+
+namespace DevTools {
     class Interface {
-        internal static void Init(){
-            int methodsCount = Config.patchMethods.Count;
-            int methodsInvoked = 0;
-            for(int i = 0; i < methodsCount; i++){
-                if(Config.patchConfigsList[i].Value == false) continue;
-                typeof(TestingLib.Patch).GetMethod(Config.patchMethods[i]).Invoke(null, null);
-                methodsInvoked++;
-            }
-            Plugin.Logger.LogInfo($"Called {methodsInvoked} TestingLib.Patch methods.");
-
-            if(Config.executeMethods.Count == 0 && Config.toolsMethods.Count == 0) return;
+        internal static void Init() {
+            InvokeMethodsMarkedAs(TestingLib.Available.Always);
             TestingLib.OnEvent.PlayerSpawn += OnEvent_PlayerSpawn;
-
         }
 
-        private static void OnEvent_PlayerSpawn()
-        {
-            int methodsCount = Config.executeMethods.Count;
-            int methodsInvoked = 0;
-            for(int i = 0; i < methodsCount; i++){
-                if(Config.executeConfigsList[i].Value == false) continue;
-                typeof(TestingLib.Execute).GetMethod(Config.executeMethods[i]).Invoke(null, null);
-                methodsInvoked++;
-            }
-            Plugin.Logger.LogInfo($"Called {methodsInvoked} TestingLib.Execute methods.");
+        private static void OnEvent_PlayerSpawn() {
+            InvokeMethodsMarkedAs(TestingLib.Available.PlayerSpawn);
+        }
 
-            methodsCount = Config.toolsMethods.Count;
-            methodsInvoked = 0;
-            for(int i = 0; i < methodsCount; i++){
-                if(Config.toolsConfigsList[i].Value == "") continue;
-                typeof(TestingLib.Tools).GetMethod(Config.toolsMethods[i]).Invoke(null, new object [] {Config.toolsConfigsList[i].Value});
-                methodsInvoked++;
+        private static void InvokeMethodsMarkedAs(TestingLib.Available availability){
+            int methodsInvoked = 0;
+            foreach (var type in Config.allTypes){
+                if (type.GetCustomAttribute<TestingLib.DevTools>().Time != availability)
+                    continue;
+                MethodBase[] methods = type.GetMethods();
+                foreach (MethodBase method in methods)
+                {
+                    if(Config.IsMethodBlacklisted(method))
+                        continue;
+                    // We don't check if a method is not Available.Always because such
+                    // a method should never exist in a class marked as always available.
+
+                    // This code is awful.
+                    var methodParams = method.GetParameters();
+                    if (methodParams.Length == 0 || methodParams[0].ParameterType == typeof(bool)) {
+                        foreach(var config in Config.boolConfigs){
+                            if($"{type.Name}.{method.Name}" == config.Definition.Section){
+                                if (methodParams.Length == 0){
+                                    methodsInvoked++;
+                                    method.Invoke(null, null);
+                                }
+                                else{
+                                    methodsInvoked++;
+                                    method.Invoke(null, new object[]{config.Value});
+                                }
+                                break;
+                            }
+                        }
+                    }
+                    else if (methodParams[0].ParameterType == typeof(string)){
+                        foreach(var config in Config.stringConfigs){
+                            if($"{type.Name}.{method.Name}" == config.Definition.Section){
+                                methodsInvoked++;
+                                method.Invoke(null, new object[]{config.Value});
+                                break;
+                            }
+                        }
+                    }
+                }
             }
-            Plugin.Logger.LogInfo($"Called {methodsInvoked} TestingLib.Tools methods.");
+            
+            Plugin.Logger.LogInfo($"Invoked: {methodsInvoked} methods of type: {availability.GetType()}");
         }
     }
 }

@@ -197,5 +197,50 @@
             The Mod GUID of TestingLib.
             </summary>
         </member>
+        <member name="T:TestingLib.Visibility">
+            <summary>
+            Visibility to DevTools.
+            </summary>
+        </member>
+        <member name="F:TestingLib.Visibility.Whitelist">
+            <summary>
+            Will be fetched by DevTools.
+            </summary>
+        </member>
+        <member name="F:TestingLib.Visibility.Blacklist">
+            <summary>
+            Will not be fetched by DevTools.
+            </summary>
+        </member>
+        <member name="T:TestingLib.Available">
+            <summary>
+            Time until can be executed.
+            </summary>
+        </member>
+        <member name="F:TestingLib.Available.Always">
+            <summary>
+            Can be executed right away.
+            </summary>
+        </member>
+        <member name="F:TestingLib.Available.PlayerSpawn">
+            <summary>
+            Can be executed after player has spawned.
+            </summary>
+        </member>
+        <member name="T:TestingLib.DevTools">
+            <summary>
+            Visiblity to DevTools.
+            </summary>
+        </member>
+        <member name="P:TestingLib.DevTools.Visibility">
+            <summary>
+            Value of Visiblity.
+            </summary>
+        </member>
+        <member name="P:TestingLib.DevTools.Time">
+            <summary>
+            The specified time a method can be executed.
+            </summary>
+        </member>
     </members>
 </doc>
