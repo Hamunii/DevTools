@@ -14,7 +14,7 @@ namespace DevTools {
     [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
     [BepInDependency(TestingLib.Plugin.ModGUID, BepInDependency.DependencyFlags.HardDependency)]
     public class Plugin : BaseUnityPlugin {
-        public static Config DevToolsConfig { get; internal set; }
+        public static DevConfig DevToolsConfig { get; internal set; }
         internal static new ManualLogSource Logger;
         internal static string TestingLibLocation;
         private void Awake() {
@@ -25,41 +25,27 @@ namespace DevTools {
             TestingLibLocation = BepInEx.Bootstrap.Chainloader.PluginInfos[TestingLib.Plugin.ModGUID].Location;
 
             DevToolsConfig = new(Config);
-            Interface.Init();
+            Patcher.Init();
         }
     }
 
-    public class Config
+    public class DevConfig
     {
         // This is bad code, but it works for now.
-        // public static List<ConfigEntry<bool>> patchConfigsList;
-        // public static List<ConfigEntry<bool>> executeConfigsList;
-        // public static List<ConfigEntry<string>> toolsConfigsList;
         public static List<ConfigEntry<bool>> boolConfigs;
         public static List<ConfigEntry<string>> stringConfigs;
+        public static List<ConfigEntry<int>> intConfigs;
         public static List<Type> allTypes;
-        public static List<MethodBase> allMethods;
         private static List<string> methodNames;
-        // public static List<string> patchMethods;
-        // public static List<string> executeMethods;
-        // public static List<string> toolsMethods;
-        public Config(ConfigFile cfg)
+        public DevConfig(ConfigFile cfg)
         {
-            // patchConfigsList = new List<ConfigEntry<bool>>();
-            // executeConfigsList = new List<ConfigEntry<bool>>();
-            // toolsConfigsList = new List<ConfigEntry<string>>();
             // new stuff
             boolConfigs = new List<ConfigEntry<bool>>();
             stringConfigs = new List<ConfigEntry<string>>();
+            intConfigs = new List<ConfigEntry<int>>();
             
             allTypes = new List<Type>();
-            allMethods = new List<MethodBase>();
-            // allConfigs.Add();
             methodNames = new List<string>();
-            // patchMethods = new List<string>();
-            // executeMethods = new List<string>();
-            // toolsMethods = new List<string>();
-            // Temporary path
 
             Assembly ass = Assembly.LoadFile(Plugin.TestingLibLocation);
             XDocument doc = new XDocument();
@@ -86,8 +72,8 @@ namespace DevTools {
             Type[] types = ass.GetTypes();
             foreach (Type type in types)
             {
-                if (type.GetCustomAttribute<TestingLib.DevTools>() == null
-                ||  type.GetCustomAttribute<TestingLib.DevTools>().Visibility != Visibility.Whitelist)
+                if (type.GetCustomAttribute<Attributes.DevTools>() == null
+                ||  type.GetCustomAttribute<Attributes.DevTools>().Visibility != Attributes.Visibility.Whitelist)
                 {
                     continue;
                 }
@@ -99,10 +85,15 @@ namespace DevTools {
                     if(IsMethodBlacklisted(method))
                         continue;
 
-                    allMethods.Add(method);
                     AddConfigEntry(type, method, queryText, cfg);
                 }
             }
+
+            // Thanks to Kittenji for this piece of code:
+            PropertyInfo orphanedEntriesProp = cfg.GetType().GetProperty("OrphanedEntries", BindingFlags.NonPublic | BindingFlags.Instance);
+            var orphanedEntries = (Dictionary<ConfigDefinition, string>)orphanedEntriesProp.GetValue(cfg, null);
+            orphanedEntries.Clear(); // Clear orphaned entries (Unbinded/Abandoned entries)
+            cfg.Save(); // Save the config file
         }
 
         public static bool IsMethodBlacklisted(MethodBase method){
@@ -110,8 +101,8 @@ namespace DevTools {
                 || method.Name == "GetHashCode"
                 || method.Name == "GetType"
                 || method.Name == "ToString"
-                || (method.GetCustomAttribute<TestingLib.DevTools>() != null
-                && method.GetCustomAttribute<TestingLib.DevTools>().Visibility == Visibility.Blacklist))
+                || (method.GetCustomAttribute<Attributes.DevTools>() != null
+                && method.GetCustomAttribute<Attributes.DevTools>().Visibility == Attributes.Visibility.Blacklist))
                 return true;
             return false;
         }
@@ -161,6 +152,15 @@ namespace DevTools {
                     cfg.Bind($"{type.Name}.{method.Name}",
                         methodParams[0].Name,
                         "",
+                        $"{description}"
+                    )
+                );
+            }
+            else if(methodParams[0].ParameterType == typeof(int) || methodParams[0].ParameterType.IsEnum){
+                intConfigs.Add(
+                    cfg.Bind($"{type.Name}.{method.Name}",
+                        methodParams[0].Name,
+                        0,
                         $"{description}"
                     )
                 );
