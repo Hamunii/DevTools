@@ -5,7 +5,7 @@ schemaVersion = "0.0.1"
 repository = "https://thunderstore.io"
 
 [package]
-description = "A cheat mod for developers. Powered by TestingLib."
+description = "A Cheat Mod for Developers. Powered by TestingLib."
 websiteUrl = "https://github.com/Hamunii/DevTools"
 containsNsfwContent = false
 [package.dependencies]

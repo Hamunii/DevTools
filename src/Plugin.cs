@@ -9,6 +9,7 @@ using BepInEx;
 using BepInEx.Logging;
 using BepInEx.Configuration;
 using TestingLib;
+using UnityEngine;
 
 namespace DevTools {
     [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
@@ -16,6 +17,7 @@ namespace DevTools {
     public class Plugin : BaseUnityPlugin {
         public static DevConfig DevToolsConfig { get; internal set; }
         internal static new ManualLogSource Logger;
+        internal static GameObject myGUIObject;
         internal static string TestingLibLocation;
         private void Awake() {
             Logger = base.Logger;
@@ -26,6 +28,9 @@ namespace DevTools {
 
             DevToolsConfig = new(Config);
             Patcher.Init();
+            if(DevConfig.addModMenu.Value){
+                ToggleGUI.Init();
+            }
         }
     }
 
@@ -36,7 +41,10 @@ namespace DevTools {
         public static List<ConfigEntry<string>> stringConfigs;
         public static List<ConfigEntry<int>> intConfigs;
         public static List<Type> allTypes;
+        public static List<MethodListing> allMethods;
         private static List<string> methodNames;
+        internal static ConfigEntry<bool> addModMenu; 
+
         public DevConfig(ConfigFile cfg)
         {
             // new stuff
@@ -46,6 +54,7 @@ namespace DevTools {
             
             allTypes = new List<Type>();
             methodNames = new List<string>();
+            allMethods = new List<MethodListing>();
 
             Assembly ass = Assembly.LoadFile(Plugin.TestingLibLocation);
             XDocument doc = new XDocument();
@@ -69,11 +78,17 @@ namespace DevTools {
                 methodNames.Add(item);
             }
 
+            addModMenu = cfg.Bind($"DevTools Menu",
+                "Add menu",
+                true,
+                $"Add DevTools Menu to quick menu."
+            );
+
             Type[] types = ass.GetTypes();
             foreach (Type type in types)
             {
                 if (type.GetCustomAttribute<Attributes.DevTools>() == null
-                ||  type.GetCustomAttribute<Attributes.DevTools>().Visibility != Attributes.Visibility.Whitelist)
+                ||  type.GetCustomAttribute<Attributes.DevTools>().Visibility == Attributes.Visibility.Blacklist)
                 {
                     continue;
                 }
@@ -82,8 +97,14 @@ namespace DevTools {
                 MethodBase[] methods = type.GetMethods();
                 foreach (MethodBase method in methods)
                 {
-                    if(IsMethodBlacklisted(method))
+                    if(IsMethodBlacklisted(method)){
+                        // This code is horrible, I need to rewrite this whole thing
+                        Attributes.DevTools attr = method.GetCustomAttribute<Attributes.DevTools>();
+                        if(attr != null && attr.Visibility == Attributes.Visibility.MenuOnly){
+                            allMethods.Add(new MethodListing(type, method, true, attr.Visibility));
+                        }
                         continue;
+                    }
 
                     AddConfigEntry(type, method, queryText, cfg);
                 }
@@ -98,11 +119,17 @@ namespace DevTools {
 
         public static bool IsMethodBlacklisted(MethodBase method){
             if(method.Name == "Equals"
-                || method.Name == "GetHashCode"
-                || method.Name == "GetType"
-                || method.Name == "ToString"
-                || (method.GetCustomAttribute<Attributes.DevTools>() != null
-                && method.GetCustomAttribute<Attributes.DevTools>().Visibility == Attributes.Visibility.Blacklist))
+            || method.Name == "GetHashCode"
+            || method.Name == "GetType"
+            || method.Name == "ToString"
+            || (
+                    method.GetCustomAttribute<Attributes.DevTools>() != null &&
+                    (
+                        method.GetCustomAttribute<Attributes.DevTools>().Visibility == Attributes.Visibility.Blacklist
+                    ||  method.GetCustomAttribute<Attributes.DevTools>().Visibility == Attributes.Visibility.MenuOnly
+                    )
+                )
+            )
                 return true;
             return false;
         }
@@ -136,6 +163,12 @@ namespace DevTools {
                         $"{description}"
                     )
                 );
+                Attributes.DevTools attr = method.GetCustomAttribute<Attributes.DevTools>();
+                if(attr == null){
+                    // We have already checked that an attribute exists on the type.
+                    attr = type.GetCustomAttribute<Attributes.DevTools>();
+                }
+                allMethods.Add(new MethodListing(type, method, boolConfigs[boolConfigs.Count-1].Value, attr.Visibility));
             }
             // We assume no method has more than 1 parameter lol
             else if(methodParams[0].ParameterType == typeof(bool)){
@@ -146,6 +179,12 @@ namespace DevTools {
                         $"{description}"
                     )
                 );
+                Attributes.DevTools attr = method.GetCustomAttribute<Attributes.DevTools>();
+                if(attr == null){
+                    // We have already checked that an attribute exists on the type.
+                    attr = type.GetCustomAttribute<Attributes.DevTools>();
+                }
+                allMethods.Add(new MethodListing(type, method, boolConfigs[boolConfigs.Count-1].Value, attr.Visibility));
             }
             else if(methodParams[0].ParameterType == typeof(string)){
                 stringConfigs.Add(
@@ -155,6 +194,12 @@ namespace DevTools {
                         $"{description}"
                     )
                 );
+                Attributes.DevTools attr = method.GetCustomAttribute<Attributes.DevTools>();
+                if(attr == null){
+                    // We have already checked that an attribute exists on the type.
+                    attr = type.GetCustomAttribute<Attributes.DevTools>();
+                }
+                allMethods.Add(new MethodListing(type, method, stringConfigs[stringConfigs.Count-1].Value, attr.Visibility));
             }
             else if(methodParams[0].ParameterType == typeof(int) || methodParams[0].ParameterType.IsEnum){
                 intConfigs.Add(
@@ -164,7 +209,14 @@ namespace DevTools {
                         $"{description}"
                     )
                 );
+                Attributes.DevTools attr = method.GetCustomAttribute<Attributes.DevTools>();
+                if(attr == null){
+                    // We have already checked that an attribute exists on the type.
+                    attr = type.GetCustomAttribute<Attributes.DevTools>();
+                }
+                allMethods.Add(new MethodListing(type, method, intConfigs[intConfigs.Count-1].Value, attr.Visibility));
             }
+
         }
     }
 }

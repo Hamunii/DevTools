@@ -1,5 +1,8 @@
-﻿using System.Reflection;
+﻿using System.Collections.Generic;
+using System.Reflection;
+using DevTools.GUI;
 using TestingLib;
+using UnityEngine;
 
 namespace DevTools {
     class Patcher {
@@ -19,6 +22,23 @@ namespace DevTools {
         private static void GameNetworkManager_StartHost(On.GameNetworkManager.orig_StartHost orig, GameNetworkManager self)
         {
             orig(self);
+            ModMenu.canOpenDevToolsMenu = true;
+            if(!ModMenu.menuExists && DevConfig.addModMenu.Value){
+                Plugin.myGUIObject = new GameObject("DevToolsGUI");
+                Object.DontDestroyOnLoad(Plugin.myGUIObject);
+                Plugin.myGUIObject.hideFlags = HideFlags.HideAndDontSave;
+                Plugin.myGUIObject.AddComponent<ModMenu>();
+                ModMenu.menuExists = true;
+
+                // Add methods to menu
+                ModMenu.menuMethods = new List<MethodListing>();
+                foreach(var methodListing in DevConfig.allMethods){
+                    if(!(methodListing.visibility == Attributes.Visibility.Whitelist
+                      || methodListing.visibility == Attributes.Visibility.MenuOnly))
+                        continue;
+                    ModMenu.menuMethods.Add(methodListing);
+                }
+            }
             InvokeMethodsMarkedAs(Attributes.Available.Always);
             OnEvent.PlayerSpawn += PlayerSpawn;
         }
@@ -30,52 +50,43 @@ namespace DevTools {
 
         private static void InvokeMethodsMarkedAs(Attributes.Available availability){
             int methodsInvoked = 0;
-            foreach (var type in DevConfig.allTypes){
-                if (type.GetCustomAttribute<Attributes.DevTools>().Time != availability)
+            foreach(var methodListing in DevConfig.allMethods){
+                if(methodListing.type.GetCustomAttribute<Attributes.DevTools>().Time != availability)
                     continue;
-                MethodBase[] methods = type.GetMethods();
-                foreach (MethodBase method in methods)
-                {
-                    if(DevConfig.IsMethodBlacklisted(method))
-                        continue;
-                    // We don't check if a method is not Available.Always because such
-                    // a method should never exist in a class marked as always available.
-
-                    // This code is awful.
-                    var methodParams = method.GetParameters();
-                    if (methodParams.Length == 0 || methodParams[0].ParameterType == typeof(bool)) {
-                        foreach(var config in DevConfig.boolConfigs){
-                            if($"{type.Name}.{method.Name}" == config.Definition.Section){
-                                if (methodParams.Length == 0){
-                                    methodsInvoked++;
-                                    method.Invoke(null, null);
-                                }
-                                else{
-                                    methodsInvoked++;
-                                    method.Invoke(null, new object[]{config.Value});
-                                }
-                                break;
-                            }
+                if(!(methodListing.visibility == Attributes.Visibility.Whitelist
+                  || methodListing.visibility == Attributes.Visibility.ConfigOnly))
+                    continue;
+                // This is bad code.
+                if(methodListing.valueType == typeof(bool)){
+                    if(methodListing.value == true.ToString()){
+                        methodListing.methodBase.Invoke(null, null);
+                        methodsInvoked++;
+                        if(!ModMenu.menuExists)
+                            continue;
+                        if(methodListing.type.Name == "Patch"){
+                            methodListing.state = true;
                         }
                     }
-                    else if (methodParams[0].ParameterType == typeof(string)){
-                        foreach(var config in DevConfig.stringConfigs){
-                            if($"{type.Name}.{method.Name}" == config.Definition.Section){
-                                if (config.Value == "")
-                                    break;
-                                methodsInvoked++;
-                                method.Invoke(null, new object[]{config.Value});
-                                break;
-                            }
+                }
+                else if(methodListing.valueType == typeof(string)){
+                    if(methodListing.value != ""){
+                        methodListing.methodBase.Invoke(null, new object[]{methodListing.value});
+                        methodsInvoked++;
+                        if(!ModMenu.menuExists)
+                            continue;
+                        if(methodListing.type.Name == "Patch"){
+                            methodListing.state = true;
                         }
                     }
-                    else if (methodParams[0].ParameterType == typeof(int) || methodParams[0].ParameterType.IsEnum){
-                        foreach(var config in DevConfig.intConfigs){
-                            if($"{type.Name}.{method.Name}" == config.Definition.Section){
-                                methodsInvoked++;
-                                method.Invoke(null, new object[]{config.Value});
-                                break;
-                            }
+                }
+                else if(methodListing.valueType == typeof(int)){
+                    if(int.Parse(methodListing.value) != 0){
+                        methodListing.methodBase.Invoke(null, new object[]{int.Parse(methodListing.value)});
+                        methodsInvoked++;
+                        if(!ModMenu.menuExists)
+                            continue;
+                        if(methodListing.type.Name == "Patch"){
+                            methodListing.state = true;
                         }
                     }
                 }

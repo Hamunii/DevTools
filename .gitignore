@@ -47,3 +47,6 @@ UpgradeLog.htm
 
 # Thunderstore packages
 /Thunderstore/Packages
+
+# Allow stuff
+!/dlls/TestingLib.dll

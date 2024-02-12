@@ -112,6 +112,19 @@
             Skips the check for ammo when using the shotgun.
             </summary>
         </member>
+        <member name="M:TestingLib.Patch.PatchAll">
+            <summary>
+            Calls all methods in <c>TestingLib.Patch</c>:
+            <br/>
+            <br/><c>Patch.IsEditor()</c>
+            <br/><c>Patch.SkipSpawnPlayerAnimation()</c>
+            <br/><c>Patch.OnDeathHeal()</c>
+            <br/><c>Patch.MovementCheat()</c>
+            <br/><c>Patch.InfiniteSprint()</c>
+            <br/><c>Patch.InfiniteCredits()</c>
+            <br/><c>Patch.InfiniteShotgunAmmo()</c>
+            </summary>
+        </member>
         <member name="M:TestingLib.Patch.UnpatchAll">
             <summary>
             Unpatches all applied patches.
@@ -144,6 +157,11 @@
             Valid values are: <c>TeleportLocation.Inside = 1</c>, <c>TeleportLocation.Outside = 2</c>
             </summary>
             <param name="location"></param>
+        </member>
+        <member name="M:TestingLib.Tools.TeleportSelfToEntrance">
+            <summary>
+            Teleport yourself to entrance.
+            </summary>
         </member>
         <member name="M:TestingLib.Tools.SpawnEnemyInFrontOfSelf(System.String)">
             <summary>
@@ -190,6 +208,16 @@
         <member name="F:TestingLib.Attributes.Visibility.Blacklist">
             <summary>
             Will not be fetched by DevTools.
+            </summary>
+        </member>
+        <member name="F:TestingLib.Attributes.Visibility.MenuOnly">
+            <summary>
+            Shows only on the DevTools menu.
+            </summary>
+        </member>
+        <member name="F:TestingLib.Attributes.Visibility.ConfigOnly">
+            <summary>
+            Appears in the config, but not the DevTools menu.
             </summary>
         </member>
         <member name="T:TestingLib.Attributes.Available">
