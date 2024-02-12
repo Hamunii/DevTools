@@ -25,7 +25,6 @@ namespace DevTools {
 
             // Should exist because HardDependency
             TestingLibLocation = BepInEx.Bootstrap.Chainloader.PluginInfos[TestingLib.Plugin.ModGUID].Location;
-
             DevToolsConfig = new(Config);
             Patcher.Init();
             if(DevConfig.addModMenu.Value){
@@ -56,7 +55,7 @@ namespace DevTools {
             methodNames = new List<string>();
             allMethods = new List<MethodListing>();
 
-            Assembly ass = Assembly.LoadFile(Plugin.TestingLibLocation);
+            // Assembly ass = Assembly.LoadFile(Plugin.TestingLibLocation);
             XDocument doc = new XDocument();
             try{
                 doc = XDocument.Load(Path.Combine(Path.GetDirectoryName(Plugin.TestingLibLocation), "TestingLib.xml"));
@@ -84,7 +83,7 @@ namespace DevTools {
                 $"Add DevTools Menu to quick menu."
             );
 
-            Type[] types = ass.GetTypes();
+            Type[] types = {typeof(Execute), typeof(Patch), typeof(Tools)}; // ass.GetTypes();
             foreach (Type type in types)
             {
                 if (type.GetCustomAttribute<Attributes.DevTools>() == null
