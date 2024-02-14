@@ -14,14 +14,23 @@ namespace DevTools {
         private static void MenuManager_StartAClient(On.MenuManager.orig_StartAClient orig, MenuManager self)
         {
             orig(self);
-            // Disable patches in case previously host
-            Patch.UnpatchAll();
-            OnEvent.PlayerSpawn -= PlayerSpawn;
+            if(GameNetworkManager.Instance.disableSteam){
+                InitializePatcher();
+            }
+            else {
+                // Disable patches in case previously host
+                Patch.UnpatchAll();
+                OnEvent.PlayerSpawn -= PlayerSpawn;
+            }
         }
 
         private static void GameNetworkManager_StartHost(On.GameNetworkManager.orig_StartHost orig, GameNetworkManager self)
         {
             orig(self);
+            InitializePatcher();
+        }
+
+        static void InitializePatcher(){
             ModMenu.canOpenDevToolsMenu = true;
             if(!ModMenu.menuExists && DevConfig.addModMenu.Value){
                 Plugin.myGUIObject = new GameObject("DevToolsGUI");
