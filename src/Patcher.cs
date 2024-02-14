@@ -49,6 +49,7 @@ namespace DevTools {
                 }
             }
             InvokeMethodsMarkedAs(Attributes.Available.Always);
+            OnEvent.PlayerSpawn -= PlayerSpawn;
             OnEvent.PlayerSpawn += PlayerSpawn;
         }
 
