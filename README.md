@@ -6,7 +6,7 @@ Note that `TestingLib.xml` needs to be alongside `TestingLib.dll` for this to wo
 
 Also, `TestingLib.dll` itself has metadata that this mod reads to know what methods should be listed and when they can be called. This mostly means that TestingLib can be updated without updating this mod (assuming no major breaking changes of course), and you can still use the new methods with this mod.
 
-**Note:** This mod applies patches only if you are the host.
+**Note:** This mod get disabled for non-host players when Online, so not in LAN mode. Also note that not all cheats work for clients. For now, this mod does not take that into account in any way.
 
 ## Why is TestingLib separate from DevTools?
 
